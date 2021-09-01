@@ -32,14 +32,11 @@ Given an input stained image (assumed to be in color) the code will attempt to s
 
 Given a starting image there are a number of image processing steps done:
 
-1. Image contrasting (imadjust)
-2. Image blurring (imgaussfilt)
-3. Graph cut (laznsapping)
-4. Flood fill (graydiffweight/imsegfmm)
-5. Invert mask (imcomplement)
-6. Active contour (activecontour)
-7. Binarization (imbinarize)
-8. Area Extraction (bwarea)
+1. Image denoising (medfilt2/wiener2)
+2. Image thresholding (multithresh)
+3. Image quantization (imquantize)
+4. Area calculations (bwarea)
+5. Intensity mean/standard deviation calculation (mean2/std2)
 
 [Details on the mathematics and usage of each step can be found in the MATLAB documentation.](https://www.mathworks.com/help/images/)
 
