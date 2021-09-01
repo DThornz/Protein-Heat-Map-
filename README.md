@@ -1,6 +1,6 @@
 # Protein Heat Map 
 
-## This code was made to work with MATLAB R2021a and requires the Image Processing Toolbox work properly.
+## This code was made to work with MATLAB R2021a and requires the Image Processing Toolbox to work properly.
 
 ## What are Heat Map?
 
