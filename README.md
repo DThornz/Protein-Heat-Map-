@@ -17,7 +17,7 @@ This code was developed to automatically segment images that were stained using 
 Given an input stained image (assumed to be in color) the code will attempt to segment it into a given number of proteins and label them as such. Heat maps are then generated and saved as PNG files alongside statistics in a CSV.
 
 ### Original
-<a href="url"><img src="https://github.com/DThornz/Protein-Heat-Map-/blob/main/E_2movats_outer_x20_1_FullImg.png" align="center" width="778.8" height="503.2" ></a>
+<a href="url"><img src="https://github.com/DThornz/Protein-Heat-Map-/blob/main/E_2movats_outer_x20_1_FullImg.png" align="center" width="601.8" height="1200" ></a>
 
 
 ### Segmented with Area Percentages
@@ -26,6 +26,7 @@ Given an input stained image (assumed to be in color) the code will attempt to s
 
 ### Elastin Intesity Heat Map
 <a href="url"><img src="https://github.com/DThornz/Protein-Heat-Map-/blob/main/Example%20Results/E_2movats_outer_x20_1_FullImg_Elastin_Intensity.png" align="center" width="778.8" height="503.2" ></a>
+
 
 ## How does it do it?
 
