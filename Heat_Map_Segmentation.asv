@@ -27,7 +27,7 @@
 clear;clc;close all force
 %% Load in Image Data
 full_img_path=uipickfiles('Prompt','Select Original Full Image');
-[filepath,name,ext] = fileparts(full_img_path);
+[filepath,name,ext] = fileparts(full_img_path{1});
 % Check if any files are selected in the first place
 if isempty(full_img_path) || length(full_img_path)==0%#ok<ISMT>
     error('No image selected.')
@@ -119,56 +119,62 @@ switch answer_denoising
 end
 close all force
 %% Segment Image and Ask User to Confirm
-while segmentation_result=='No'
-prompt = {'Enter number of suspected proteins:','Enter their names, darkest to lightest, space separated:'};
-dlgtitle = 'Segmentation Inputs';
-dims = [1 50];
-definput = {'3','Elastin Elastin/Mucin Mucin'};
-answer_denoising = inputdlg(prompt,dlgtitle,dims,definput);
-
-num_proteins=str2double(answer_denoising{1}); % Number of suspected proteins in image
-num_segments=num_proteins+1; % Number of actual segments that will be done, extra is the background
-
-% Specify the protein names, in order of darkest to lightest
-proteins_names=split(answer_denoising{2})';
-proteins_names{end+1}='Background'; % Add background to end of list
-
-nThresholds=num_proteins;
-img=processed_img;
-img=rgb2gray(img);
-% Run Otsu Multithresh Algorithim
-thresholds = multithresh(img, nThresholds);
-% Quantize image into bins based on results
-[quantizedImg, quantIndex] = imquantize(img, thresholds);
-% Convert quantization in proper image to view
-% quantizedImg_RGB = label2rgb(255*quantizedImg/num_segments);
-quantizedImg_to_view = 255*quantizedImg/num_segments;
+segmentation_result='No';
 figure
-% Plot segmented image
-imagesc(quantizedImg_to_view)
-% Turn off x/y axis
-axis off
-% Adjust axis to account for image
-axis image
-% Set up tick values to be at center of colorbar
-c=colorbar;
-c.Ticks=linspace(min(c.Limits),max(c.Limits),num_segments);
-% Add on area percentages to colorbar legend
-c.TickLabels=proteins_names{end};
-colormap(jet(num_segments))
-% Pretty up graph
-c.FontName='Times';
-c.FontSize=20;
-c.FontWeight='bold';
-c.Label.String='Protein';
-% Enlarge figure
-g=gcf;
-g.Color='w';
-g.Position=[1,41,1920,963];
-
-segmentation_result = questdlg('Would you like to see the denoised results?', ...
-    'Denoising Plot Prompt', ...
-    'Yes','No','No');
+% Ask user if segmentation was done correctly, if not keeping repeating
+% until true
+while strcmp(segmentation_result,'No')
+    prompt = {'Enter number of suspected proteins:','Enter their names, darkest to lightest, space separated:'};
+    dlgtitle = 'Segmentation Inputs';
+    dims = [1 50];
+    definput = {'3','Elastin Elastin/Mucin Mucin'};
+    answer_denoising = inputdlg(prompt,dlgtitle,dims,definput);
+    
+    num_proteins=str2double(answer_denoising{1}); % Number of suspected proteins in image
+    num_segments=num_proteins+1; % Number of actual segments that will be done, extra is the background
+    
+    % Specify the protein names, in order of darkest to lightest
+    proteins_names=split(answer_denoising{2})';
+    proteins_names{end+1}='Background'; % Add background to end of list
+    
+    nThresholds=num_proteins;
+    img=processed_img;
+    img=rgb2gray(img);
+    % Run Otsu Multithresh Algorithim
+    thresholds = multithresh(img, nThresholds);
+    % Quantize image into bins based on results
+    [quantizedImg, quantIndex] = imquantize(img, thresholds);
+    % Convert quantization in proper image to view
+    % quantizedImg_RGB = label2rgb(255*quantizedImg/num_segments);
+    quantizedImg_to_view = 255*quantizedImg/num_segments;
+    % Plot segmented image
+    imagesc(quantizedImg_to_view)
+    % Turn off x/y axis
+    axis off
+    % Adjust axis to account for image
+    axis image
+    % Set up tick values to be at center of colorbar
+    c=colorbar;
+    c.Ticks=linspace(min(c.Limits),max(c.Limits),num_segments);
+    % Add on area percentages to colorbar legend
+    c.TickLabels=proteins_names;
+    colormap(jet(num_segments))
+    % Pretty up graph
+    c.FontName='Times';
+    c.FontSize=20;
+    c.FontWeight='bold';
+    c.Label.String='Protein';
+    % Enlarge figure
+    g=gcf;
+    g.Color='w';
+    g.Position=[1,41,1920,963];
+    
+    segmentation_result = questdlg('Was the segmentation result correct? Meaning, do the colors for the proteins match the colorbar labels?', ...
+        'Denoising Plot Prompt', ...
+        'Yes','No','No');
+    clf
+end
+close all force
 %% Calculate Protein Amounts by Area
 % Compute protein areas and relative tissue percentages
 for ii=1:numel(unique(quantIndex))
@@ -215,7 +221,7 @@ close all force
 %% Compute Each Protein's Average Intensity and Standard Deviation
 for ii=1:numel(unique(quantIndex))-1
     mask=quantizedImg==ii;
-    temp=im2double(im2gray(processed_img));
+    temp=im2double(rgb2gray(processed_img));
     temp=temp(mask);
     temp_mean=trimmean(temp,10);
     temp_std=std(temp);

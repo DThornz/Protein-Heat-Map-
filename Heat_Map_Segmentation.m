@@ -27,7 +27,11 @@
 clear;clc;close all force
 %% Load in Image Data
 full_img_path=uipickfiles('Prompt','Select Original Full Image');
-[filepath,name,ext] = fileparts(full_img_path);
+try
+    [filepath,name,ext] = fileparts(full_img_path);
+catch
+    [filepath,name,ext] = fileparts(full_img_path{1});
+end
 % Check if any files are selected in the first place
 if isempty(full_img_path) || length(full_img_path)==0%#ok<ISMT>
     error('No image selected.')
@@ -221,7 +225,7 @@ close all force
 %% Compute Each Protein's Average Intensity and Standard Deviation
 for ii=1:numel(unique(quantIndex))-1
     mask=quantizedImg==ii;
-    temp=im2double(im2gray(processed_img));
+    temp=im2double(rgb2gray(processed_img));
     temp=temp(mask);
     temp_mean=trimmean(temp,10);
     temp_std=std(temp);
@@ -242,7 +246,7 @@ for ii=1:numel(unique(quantIndex))-1
     xlabel(title_strs{ii})
     hold on
     
-    h=imagesc(im2double(im2gray(processed_img)),'AlphaData',mask);
+    h=imagesc(im2double(rgb2gray(processed_img)),'AlphaData',mask);
     % Turn off x/y axis
     axis off
     % Adjust axis to account for image
@@ -269,8 +273,9 @@ for ii=1:numel(unique(quantIndex))-1
     g.LineWidth=2;
     
     % Save image as high quality tiff
-    filename=[pwd '\' name '_' proteins_names{ii} '_Intensity' '.png'];
+    filename=[name '_' proteins_names{ii} '_Intensity' '.png'];
     filename = replace(filename,'/','_');
+    filename = [pwd '\' filename];
     print(gcf,filename,'-dpng','-r300')
     
     clf
