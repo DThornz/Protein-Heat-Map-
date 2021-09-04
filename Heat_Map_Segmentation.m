@@ -64,10 +64,9 @@ switch answer_denoising
         % Median works by taking the median value around each pixel
         % according to kernal size. Pixel value is then replaced with
         % median.
-        % Wiener works by taking the mean and standard deviation value
-        % around each pixel according to kernal size. If pixel value is
-        % outside of +/- standard deviation of mean value is replaced with
-        % average.
+        % Wiener works by taking a pixel wise adaptive low-pass filter 
+        % around each pixel according to kernal size. The kernal is used to
+        % estimate the local image mean and standard deviation used.
         
         denoisedR = medfilt2(noisyR,kernal);
         denoisedG = medfilt2(noisyG,kernal);
