@@ -103,18 +103,18 @@ switch answer_denoising
         
         % Figure out which image has less noise and select that as the
         % image to use for later processing
-        noisyPSNR_Med = psnr(noisyRGB,denoisedRGB_Med);
-        noisyPSNR_Wiener = psnr(noisyRGB,denoisedRGB_Wiener);
+        noisyBri_Med = brisque(denoisedRGB_Med);
+        noisyBri_Wiener = brisque(denoisedRGB_Wiener);
         
-        noisy_img_pick=[noisyPSNR_Med,noisyPSNR_Wiener];
-        [~,I]=max(noisy_img_pick);
+        noisy_img_pick=[noisyBri_Med,noisyBri_Wiener];
+        [~,I]=min(noisy_img_pick);
         
         if I==1
             processed_img=denoisedRGB_Med;
-            fprintf('Median image chosen: larger peak signal-to-noise ratio (PSNR) \n')
+            fprintf('Median image chosen: lower BRISQUE score \n')
         else
             processed_img=denoisedRGB_Wiener;
-            fprintf('Wiener image chosen: larger peak signal-to-noise ratio (PSNR) \n')
+            fprintf('Wiener image chosen: lower BRISQUE score \n')
         end
     case 'No' % If no was selected bypass denoising
         processed_img=full_img;
