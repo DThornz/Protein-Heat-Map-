@@ -111,10 +111,10 @@ switch answer_denoising
         
         if I==1
             processed_img=denoisedRGB_Med;
-            fprintf('Median image chosen: lower BRISQUE score \n')
+            fprintf('Median image chosen: lower BRISQUE score of %3.2f versus %3.2f \n',noisyBri_Med,noisyBri_Wiener)
         else
             processed_img=denoisedRGB_Wiener;
-            fprintf('Wiener image chosen: lower BRISQUE score \n')
+            fprintf('Wiener image chosen: lower BRISQUE score of %3.2f versus %3.2f \n',noisyBri_Wiener,noisyBri_Med)
         end
     case 'No' % If no was selected bypass denoising
         processed_img=full_img;
