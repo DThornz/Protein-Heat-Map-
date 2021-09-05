@@ -57,7 +57,7 @@ switch answer_denoising
     case 'Yes' % If yes denoise image
         fprintf('...Denoising image... \n')
         noisyRGB=full_img;
-        kernal=[5 5]; % Size of averaging kernal, 3x3 in this case, higher values indicates more smoothing
+        kernal=[5 5]; % Size of averaging kernal, 5x5 in this case, higher values indicates more smoothing
         % Split color img into RGB and run denoising algorithim on each
         [noisyR,noisyG,noisyB] = imsplit(noisyRGB);
         % 2 algorithims used, median filter and wiener
@@ -101,7 +101,7 @@ switch answer_denoising
                 fprintf('Bypassing plotting, continuing code. \n') 
         end
         
-        % Figure out which image has less noise and select that as the
+        % Figure out which image has less noise/artifacts and select that as the
         % image to use for later processing
         noisyBri_Med = brisque(denoisedRGB_Med);
         noisyBri_Wiener = brisque(denoisedRGB_Wiener);
