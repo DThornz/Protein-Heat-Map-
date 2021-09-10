@@ -127,20 +127,27 @@ figure
 % Ask user if segmentation was done correctly, if not keeping repeating
 % until true
 while strcmp(segmentation_result,'No')
-    prompt = {'Enter number of suspected proteins:','Enter their names, darkest to lightest, space separated:'};
+    prompt = {'Enter number of suspected segments:','Enter their names, darkest to lightest, space separated:'};
     dlgtitle = 'Segmentation Inputs';
     dims = [1 50];
-    definput = {'3','Elastin Elastin/Mucin Mucin'};
+    definput = {'4','Elastin Elastin/Mucin Mucin Background'};
     answer_denoising = inputdlg(prompt,dlgtitle,dims,definput);
     
-    num_proteins=str2double(answer_denoising{1}); % Number of suspected proteins in image
-    num_segments=num_proteins+1; % Number of actual segments that will be done, extra is the background
+    num_segments=str2double(answer_denoising{1}); % Number of of segments as a double
     
-    % Specify the protein names, in order of darkest to lightest
+    % Parse protein segment names
     proteins_names=split(answer_denoising{2})';
-    proteins_names{end+1}='Background'; % Add background to end of list
+    % Find which index is the background, if it doesn't exist add it to end
+    % of list and warn user
+    try
+        background_ind=find(strcmpi(proteins_names,'background'));
+    catch
+        fprintf('Background label not found, adding it to end of list, might cause processing issues later. \n')
+        proteins_names{end+1}='Background'; % Add background to end of list
+        background_ind=numel(proteins_names);
+    end
     
-    nThresholds=num_proteins;
+    nThresholds=num_segments-1;
     img=processed_img;
     img=rgb2gray(img);
     % Run Otsu Multithresh Algorithim
@@ -183,16 +190,21 @@ close all force
 for ii=1:numel(unique(quantIndex))
     seg_name{ii}=proteins_names{ii};
     seg_area(ii)=bwarea(quantizedImg==ii);
-    if ii==numel(unique(quantIndex))
+    if ii==background_ind
         seg_area(ii)=bwarea(quantizedImg~=ii);
-        seg_percentage=100*seg_area(1:end-1)./seg_area(end);
     end
 end
+seg_percentage=100*seg_area./seg_area(background_ind);
 % Report values and save for titles later
-for ii=1:numel(unique(quantIndex))-1
-    fprintf('Total %s Area is %3.2f%%\n',seg_name{ii},seg_percentage(ii))
-    title_strs{ii}=sprintf('%s (%3.2f%%)',seg_name{ii},seg_percentage(ii));
+for ii=1:numel(seg_percentage)
+    if ii==background_ind
+        title_strs{ii}=sprintf('%s ',seg_name{ii});
+    else
+        fprintf('Total %s Area is %3.2f%%\n',seg_name{ii},seg_percentage(ii))
+        title_strs{ii}=sprintf('%s (%3.2f%%)',seg_name{ii},seg_percentage(ii));
+    end
 end
+
 %% Show Cell with Protein Calssified and Percentages by Area
 figure
 % Plot segmented image
@@ -222,7 +234,7 @@ print(gcf,filename,'-dpng','-r300')
 % Close figure
 close all force
 %% Compute Each Protein's Average Intensity and Standard Deviation
-for ii=1:numel(unique(quantIndex))-1
+for ii=1:numel(seg_percentage)
     mask=quantizedImg==ii;
     temp=im2double(rgb2gray(processed_img));
     temp=temp(mask);
@@ -235,7 +247,7 @@ for ii=1:numel(unique(quantIndex))-1
 end
 %% Plot Average Intensity of Each Protein with Standard Deviation
 figure
-for ii=1:numel(unique(quantIndex))-1
+for ii=1:numel(seg_percentage)
     % Create mask based on each protein
     mask=quantizedImg==ii;
     % Plot original full image as background

@@ -27,7 +27,11 @@
 clear;clc;close all force
 %% Load in Image Data
 full_img_path=uipickfiles('Prompt','Select Original Full Image');
-[filepath,name,ext] = fileparts(full_img_path{1});
+try
+    [filepath,name,ext] = fileparts(full_img_path);
+catch
+    [filepath,name,ext] = fileparts(full_img_path{1});
+end
 % Check if any files are selected in the first place
 if isempty(full_img_path) || length(full_img_path)==0%#ok<ISMT>
     error('No image selected.')
@@ -53,17 +57,16 @@ switch answer_denoising
     case 'Yes' % If yes denoise image
         fprintf('...Denoising image... \n')
         noisyRGB=full_img;
-        kernal=[5 5]; % Size of averaging kernal, 3x3 in this case, higher values indicates more smoothing
+        kernal=[5 5]; % Size of averaging kernal, 5x5 in this case, higher values indicates more smoothing
         % Split color img into RGB and run denoising algorithim on each
         [noisyR,noisyG,noisyB] = imsplit(noisyRGB);
         % 2 algorithims used, median filter and wiener
         % Median works by taking the median value around each pixel
         % according to kernal size. Pixel value is then replaced with
         % median.
-        % Wiener works by taking the mean and standard deviation value
-        % around each pixel according to kernal size. If pixel value is
-        % outside of +/- standard deviation of mean value is replaced with
-        % average.
+        % Wiener works by taking a pixel wise adaptive low-pass filter 
+        % around each pixel according to kernal size. The kernal is used to
+        % estimate the local image mean and standard deviation used.
         
         denoisedR = medfilt2(noisyR,kernal);
         denoisedG = medfilt2(noisyG,kernal);
@@ -98,20 +101,20 @@ switch answer_denoising
                 fprintf('Bypassing plotting, continuing code. \n') 
         end
         
-        % Figure out which image has less noise and select that as the
+        % Figure out which image has less noise/artifacts and select that as the
         % image to use for later processing
-        noisyPSNR_Med = psnr(noisyRGB,denoisedRGB_Med);
-        noisyPSNR_Wiener = psnr(noisyRGB,denoisedRGB_Wiener);
+        noisyBri_Med = brisque(denoisedRGB_Med);
+        noisyBri_Wiener = brisque(denoisedRGB_Wiener);
         
-        noisy_img_pick=[noisyPSNR_Med,noisyPSNR_Wiener];
-        [~,I]=max(noisy_img_pick);
+        noisy_img_pick=[noisyBri_Med,noisyBri_Wiener];
+        [~,I]=min(noisy_img_pick);
         
         if I==1
             processed_img=denoisedRGB_Med;
-            fprintf('Median image chosen: larger peak signal-to-noise ratio (PSNR) \n')
+            fprintf('Median image chosen: lower BRISQUE score of %3.2f versus %3.2f \n',noisyBri_Med,noisyBri_Wiener)
         else
             processed_img=denoisedRGB_Wiener;
-            fprintf('Wiener image chosen: larger peak signal-to-noise ratio (PSNR) \n')
+            fprintf('Wiener image chosen: lower BRISQUE score of %3.2f versus %3.2f \n',noisyBri_Wiener,noisyBri_Med)
         end
     case 'No' % If no was selected bypass denoising
         processed_img=full_img;
@@ -124,20 +127,26 @@ figure
 % Ask user if segmentation was done correctly, if not keeping repeating
 % until true
 while strcmp(segmentation_result,'No')
-    prompt = {'Enter number of suspected proteins:','Enter their names, darkest to lightest, space separated:'};
+    prompt = {'Enter number of suspected segments:','Enter their names, darkest to lightest, space separated:'};
     dlgtitle = 'Segmentation Inputs';
     dims = [1 50];
-    definput = {'3','Elastin Elastin/Mucin Mucin'};
+    definput = {'4','Elastin Elastin/Mucin Mucin Background'};
     answer_denoising = inputdlg(prompt,dlgtitle,dims,definput);
     
-    num_proteins=str2double(answer_denoising{1}); % Number of suspected proteins in image
-    num_segments=num_proteins+1; % Number of actual segments that will be done, extra is the background
+    num_segments=str2double(answer_denoising{1}); % Number of of segments as a double
     
-    % Specify the protein names, in order of darkest to lightest
+    % Parse protein segment names
     proteins_names=split(answer_denoising{2})';
-    proteins_names{end+1}='Background'; % Add background to end of list
     
-    nThresholds=num_proteins;
+    try
+        background_ind=find(strcmpi(proteins_names,'background'));
+    catch
+        fprintf('Background label not found, adding it to end of list, might cause processing issues later. \n')
+        proteins_names{end+1}='Background'; % Add background to end of list
+        background_ind=numel(proteins_names);
+    end
+    
+    nThresholds=num_segments-1;
     img=processed_img;
     img=rgb2gray(img);
     % Run Otsu Multithresh Algorithim
@@ -180,16 +189,21 @@ close all force
 for ii=1:numel(unique(quantIndex))
     seg_name{ii}=proteins_names{ii};
     seg_area(ii)=bwarea(quantizedImg==ii);
-    if ii==numel(unique(quantIndex))
+    if ii==background_ind
         seg_area(ii)=bwarea(quantizedImg~=ii);
-        seg_percentage=100*seg_area(1:end-1)./seg_area(end);
     end
 end
+seg_percentage=100*seg_area./seg_area(background_ind);
 % Report values and save for titles later
-for ii=1:numel(unique(quantIndex))-1
-    fprintf('Total %s Area is %3.2f%%\n',seg_name{ii},seg_percentage(ii))
-    title_strs{ii}=sprintf('%s (%3.2f%%)',seg_name{ii},seg_percentage(ii));
+for ii=1:numel(seg_percentage)
+    if ii==background_ind
+        title_strs{ii}=sprintf('%s ',seg_name{ii});
+    else
+        fprintf('Total %s Area is %3.2f%%\n',seg_name{ii},seg_percentage(ii))
+        title_strs{ii}=sprintf('%s (%3.2f%%)',seg_name{ii},seg_percentage(ii));
+    end
 end
+
 %% Show Cell with Protein Calssified and Percentages by Area
 figure
 % Plot segmented image
@@ -219,7 +233,7 @@ print(gcf,filename,'-dpng','-r300')
 % Close figure
 close all force
 %% Compute Each Protein's Average Intensity and Standard Deviation
-for ii=1:numel(unique(quantIndex))-1
+for ii=1:numel(seg_percentage)
     mask=quantizedImg==ii;
     temp=im2double(rgb2gray(processed_img));
     temp=temp(mask);
@@ -232,7 +246,7 @@ for ii=1:numel(unique(quantIndex))-1
 end
 %% Plot Average Intensity of Each Protein with Standard Deviation
 figure
-for ii=1:numel(unique(quantIndex))-1
+for ii=1:numel(seg_percentage)
     % Create mask based on each protein
     mask=quantizedImg==ii;
     % Plot original full image as background
@@ -242,7 +256,7 @@ for ii=1:numel(unique(quantIndex))-1
     xlabel(title_strs{ii})
     hold on
     
-    h=imagesc(im2double(im2gray(processed_img)),'AlphaData',mask);
+    h=imagesc(im2double(rgb2gray(processed_img)),'AlphaData',mask);
     % Turn off x/y axis
     axis off
     % Adjust axis to account for image
@@ -269,8 +283,9 @@ for ii=1:numel(unique(quantIndex))-1
     g.LineWidth=2;
     
     % Save image as high quality tiff
-    filename=[pwd '\' name '_' proteins_names{ii} '_Intensity' '.png'];
+    filename=[name '_' proteins_names{ii} '_Intensity' '.png'];
     filename = replace(filename,'/','_');
+    filename = [pwd '\' filename];
     print(gcf,filename,'-dpng','-r300')
     
     clf
@@ -285,3 +300,4 @@ end
 T.Properties.DimensionNames{1}=name;
 table_name=[name '_' 'AvgStds' '.csv'];
 writetable(T,table_name,'WriteRowNames',true)
+fprintf('...Code finished... \n')
